@@ -104,7 +104,8 @@ public enum RFC_6238 {
         /// - Returns: The generated OTP as a string with leading zeros if necessary
         public func generate(at time: Date = Date(), using hmacProvider: HMACProvider) -> String {
             let counter = self.counter(at: time)
-            let hotp = HOTP(secret: secret, digits: digits, algorithm: algorithm)
+            // HOTP init with these parameters cannot fail as they come from validated TOTP
+            let hotp = try! HOTP(secret: secret, digits: digits, algorithm: algorithm)
             return hotp.generate(counter: counter, using: hmacProvider)
         }
         
@@ -126,7 +127,8 @@ public enum RFC_6238 {
             // Check within the time window
             for offset in -window...window {
                 let testCounter = UInt64(Int64(currentCounter) + Int64(offset))
-                let hotp = HOTP(secret: secret, digits: digits, algorithm: algorithm)
+                // HOTP init with these parameters cannot fail as they come from validated TOTP
+                let hotp = try! HOTP(secret: secret, digits: digits, algorithm: algorithm)
                 let expectedOTP = hotp.generate(counter: testCounter, using: hmacProvider)
                 
                 if constantTimeCompare(otp, expectedOTP) {
