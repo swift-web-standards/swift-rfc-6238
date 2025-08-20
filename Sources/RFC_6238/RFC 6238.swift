@@ -104,8 +104,7 @@ public enum RFC_6238 {
         /// - Returns: The generated OTP as a string with leading zeros if necessary
         public func generate(at time: Date = Date(), using hmacProvider: HMACProvider) -> String {
             let counter = self.counter(at: time)
-            // HOTP init with these parameters cannot fail as they come from validated TOTP
-            let hotp = try! HOTP(secret: secret, digits: digits, algorithm: algorithm)
+            let hotp = HOTP(validatedSecret: secret, digits: digits, algorithm: algorithm)
             return hotp.generate(counter: counter, using: hmacProvider)
         }
         
@@ -127,8 +126,7 @@ public enum RFC_6238 {
             // Check within the time window
             for offset in -window...window {
                 let testCounter = UInt64(Int64(currentCounter) + Int64(offset))
-                // HOTP init with these parameters cannot fail as they come from validated TOTP
-                let hotp = try! HOTP(secret: secret, digits: digits, algorithm: algorithm)
+                let hotp = HOTP(validatedSecret: secret, digits: digits, algorithm: algorithm)
                 let expectedOTP = hotp.generate(counter: testCounter, using: hmacProvider)
                 
                 if constantTimeCompare(otp, expectedOTP) {
@@ -211,6 +209,18 @@ public enum RFC_6238 {
             self.algorithm = algorithm
         }
         
+        /// Internal initializer that doesn't throw - used when we know parameters are valid
+        /// This is used internally by TOTP where parameters have already been validated
+        internal init(
+            validatedSecret secret: Data,
+            digits: Int,
+            algorithm: Algorithm
+        ) {
+            self.secret = secret
+            self.digits = digits
+            self.algorithm = algorithm
+        }
+        
         /// Generates an OTP for a given counter value
         /// - Parameters:
         ///   - counter: The counter value
@@ -284,7 +294,7 @@ public enum RFC_6238 {
     }
     
     /// Errors that can occur during TOTP/HOTP operations
-    public enum Error: Swift.Error, LocalizedError {
+    public enum Error: Swift.Error, LocalizedError, Equatable {
         case invalidBase32String
         case invalidDigits(String)
         case invalidTimeStep(String)
